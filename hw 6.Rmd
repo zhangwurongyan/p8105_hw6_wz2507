@@ -106,45 +106,48 @@ weather_df =
 
 # bootstrap
 
-```{r}
-set.seed(1)
+```{r,message=FALSE}
+set.seed(100)
 
-boot_sample = function(df) {
-  sample_frac(df, replace = TRUE)
-}
-
-boot_strap = data_frame(strap_number = 1:5000,
-                    strap_sample = rerun(5000, boot_sample(weather_df)))
-
-results = boot_strap %>% mutate(model = map(strap_sample, ~lm(tmax~tmin, data = .)),
-                                summary = map(model, broom::glance),
-                                coefficient = map(model, broom::tidy)) %>% 
-  select(summary, coefficient, strap_number) %>% unnest() %>% mutate(term=recode(term, "(Intercept)" = "beta0", "tmin"="beta1")) %>%
-  select(r.squared, adj.r.squared, term, estimate, strap_number)  %>%  pivot_wider(names_from = term, values_from = estimate) %>% mutate(log = log(beta0*beta1))
+results = weather_df %>% 
+  bootstrap(5000) %>% mutate(model = map(strap, ~lm(tmax~tmin, data = .x)),coefficient = map(model, broom::tidy),  summary = map(model, broom::glance)) %>% 
+  select(-strap,-model) %>% unnest(summary, coefficient) %>% mutate(term=recode(term, "(Intercept)" = "beta0", "tmin"="beta1")) %>%
+  select(r.squared, adj.r.squared, term, estimate)  %>%  pivot_wider(names_from = term, values_from = estimate) %>% mutate(log = log(beta0*beta1))
 
 results[1:5,] %>% 
-  select(strap_number, r.squared, adj.r.squared,log) %>% knitr::kable()
+  select(r.squared, adj.r.squared,log) %>% knitr::kable()
 ```
 
 We can see from the glance of the data set that the data contains our main interest of $\hatR^2$ and $log(\hat\beta_0 * \hat\beta_1)$.
 
-## distribution
+
+
+## distribution of log beta
+
 ```{r}
 results %>% ggplot(aes(x = log)) + geom_density() +labs(title = "distribution of log(beta0*beta1)",x = "log(beta0*beta1)")
 
 ```
 
 ```{r}
-quantile(pull(results,log))
+quantile(pull(results,log),c(0.25,0.75))
 ```
 
+The 95% confidence interval for $log(\hat\beta_0 * \hat\beta_1)$ is between (1.997, 2.029). From the plot we can see that the distribution is kind of normal with a little longer tail on the left side.
 
 
+## distribution of r-squared
 
+```{r}
+results %>% ggplot(aes(x = r.squared)) + geom_density() +labs(title = "distribution of r squared",x = "r squared")
 
+```
 
+```{r}
+quantile(pull(results,r.squared),c(0.25,0.75))
+```
 
-
+The 95% confidence interval for $R^2$ is between (0.906, 0.917). From the plot we can see that the distribution is kind of normal and a little bit right skewed.
 
 
 
