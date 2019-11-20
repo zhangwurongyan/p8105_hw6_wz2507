@@ -1,0 +1,94 @@
+---
+title: "hw6"
+author: "Wurongyan Zhang"
+date: "11/20/2019"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(tidyverse)
+library(modelr)
+library(purrr)
+```
+
+# Problem 1
+
+## data cleaning
+```{r,warning=FALSE,message=FALSE}
+birthweight <- read_csv("data/birthweight.csv") %>% mutate(babysex = as.factor(babysex),
+         frace = as.factor(frace),
+         malform = as.factor(malform),
+         mrace = as.factor(mrace)) %>% janitor::clean_names()
+
+summary(is.na(birthweight)) %>% knitr::kable()
+```
+
+From the summary above, we can see that there are no missing data. I converted babysex, frace, malform and mrace to factor. The data set contains 4342 observations with in total 20 variables.
+
+## regression model
+
+```{r}
+model1 = lm(bwt~., data = birthweight)
+step(model1, direction = "both")
+```
+
+The model chosen from stepwise regression is:
+```{r}
+swmodel=lm(bwt~babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken, data = birthweight)
+summary(swmodel)
+```
+
+The plot of model resuduals against fitted values are shown below:
+```{r}
+birthweight %>% 
+  add_predictions(swmodel) %>% 
+  add_residuals(swmodel) %>% ggplot(aes(x=pred, y=resid))+
+  geom_point(color="pink") + geom_line(aes(y=0))+labs(title = "residuals against fitted values", x="prediction", y="residuals")
+```
+
+## comparing models
+
+In order to compare those three models, I would like to use cross validation.
+
+```{r}
+model_main = lm(bwt ~ gaweeks ,data = birthweight)
+
+model_head = lm(bwt ~ bhead + blength + babysex + bhead * blength * babysex ,data = birthweight)
+
+```
+
+
+```{r}
+set.seed(100)
+
+cv_bw = birthweight %>% crossv_mc(100) %>% mutate(train = map(train, as_tibble), test = map(test, as_tibble))
+
+cv_bw = cv_bw %>% mutate(
+  stepwise = map(train, ~lm(bwt ~babysex + bhead + blength +delwt +fincome + gaweeks + mheight + mrace + parity + ppwt + smoken, data = .)),
+  main = map(train, ~lm(bwt ~ gaweeks, data=.)),
+  head = map(train, ~lm(bwt ~ bhead + blength + babysex + bhead * blength * babysex ,data =.))
+) %>% mutate(rmse_stepwise = map2_dbl(stepwise, test, ~rmse(model = .x, data = .y)),
+             rmse_main = map2_dbl(main, test, ~rmse(model = .x, data = .y)),
+             rmse_head= map2_dbl(head, test, ~rmse(model = .x, data = .y)))
+
+cv_bw %>% select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse, color=model)) + geom_violin() + labs(title = "comparison of the models")
+```
+
+From the violin plot, we can see that the model from stepwise selection has the lowest rmse among those three models so the this model has better fit compare to the other two. For the comparison between main effect model and the interaction model, the interaction model has lower rmse than the other one.
+
+
+
+
+
+
+
+
