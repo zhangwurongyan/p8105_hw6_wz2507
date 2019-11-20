@@ -52,13 +52,16 @@ birthweight %>%
 
 In order to compare those three models, I would like to use cross validation.
 
+The three models are :
 ```{r}
+
 model_main = lm(bwt ~ gaweeks ,data = birthweight)
 
 model_head = lm(bwt ~ bhead + blength + babysex + bhead * blength * babysex ,data = birthweight)
 
 ```
 
+$$stepwise: bwt\sim babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken\\ main :bwt \sim gaweeks \\head:bwt \sim bhead + blength + babysex + bhead * blength * babysex$$
 
 ```{r}
 set.seed(100)
@@ -84,6 +87,73 @@ cv_bw %>% select(starts_with("rmse")) %>%
 ```
 
 From the violin plot, we can see that the model from stepwise selection has the lowest rmse among those three models so the this model has better fit compare to the other two. For the comparison between main effect model and the interaction model, the interaction model has lower rmse than the other one.
+
+## Problem 2
+
+```{r, message=FALSE}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+# bootstrap
+
+```{r}
+set.seed(1)
+
+boot_sample = function(df) {
+  sample_frac(df, replace = TRUE)
+}
+
+boot_strap = data_frame(strap_number = 1:5000,
+                    strap_sample = rerun(5000, boot_sample(weather_df)))
+
+results = boot_strap %>% mutate(model = map(strap_sample, ~lm(tmax~tmin, data = .)),
+                                summary = map(model, broom::glance),
+                                coefficient = map(model, broom::tidy)) %>% 
+  select(summary, coefficient, strap_number) %>% unnest() %>% mutate(term=recode(term, "(Intercept)" = "beta0", "tmin"="beta1")) %>%
+  select(r.squared, adj.r.squared, term, estimate, strap_number)  %>%  pivot_wider(names_from = term, values_from = estimate) %>% mutate(log = log(beta0*beta1))
+
+results[1:5,] %>% 
+  select(strap_number, r.squared, adj.r.squared,log) %>% knitr::kable()
+```
+
+We can see from the glance of the data set that the data contains our main interest of $\hatR^2$ and $log(\hat\beta_0 * \hat\beta_1)$.
+
+## distribution
+```{r}
+results %>% ggplot(aes(x = log)) + geom_density() +labs(title = "distribution of log(beta0*beta1)",x = "log(beta0*beta1)")
+
+```
+
+```{r}
+quantile(pull(results,log))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
