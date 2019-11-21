@@ -22,7 +22,7 @@ birthweight <- read_csv("data/birthweight.csv") %>% mutate(babysex = as.factor(b
          malform = as.factor(malform),
          mrace = as.factor(mrace)) %>% janitor::clean_names()
 
-summary(is.na(birthweight)) %>% knitr::kable()
+colSums(is.na(birthweight)) %>% knitr::kable()
 ```
 
 From the summary above, we can see that there are no missing data. I converted babysex, frace, malform and mrace to factor. The data set contains 4342 observations with in total 20 variables.
@@ -34,7 +34,7 @@ model1 = lm(bwt~., data = birthweight)
 step(model1, direction = "both")
 ```
 
-The model chosen from stepwise regression is:
+The model chosen from stepwise regression (for both directions) is:
 ```{r}
 swmodel=lm(bwt~babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken, data = birthweight)
 summary(swmodel)
@@ -45,23 +45,27 @@ The plot of model resuduals against fitted values are shown below:
 birthweight %>% 
   add_predictions(swmodel) %>% 
   add_residuals(swmodel) %>% ggplot(aes(x=pred, y=resid))+
-  geom_point(color="pink") + geom_line(aes(y=0))+labs(title = "residuals against fitted values", x="prediction", y="residuals")
+  geom_point(color="pink") + geom_smooth(method = "lm")+labs(title = "residuals against fitted values", x="prediction", y="residuals")
 ```
+
+The model has $R^2$ of 0.718 which means 71.8% of the variablity of birthweight was explained by the model.
+The relationship between residuals and fitted values are not clear as we can see from the plot above.
 
 ## comparing models
 
 In order to compare those three models, I would like to use cross validation.
 
-The three models are :
+The three models are $$stepwise: bwt\sim babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken\\ main :bwt \sim gaweeks \\head:bwt \sim bhead + blength + babysex + bhead * blength * babysex$$
+The summary of the other two models are shown below:
 ```{r}
 
 model_main = lm(bwt ~ gaweeks ,data = birthweight)
-
+summary(model_main)
 model_head = lm(bwt ~ bhead + blength + babysex + bhead * blength * babysex ,data = birthweight)
-
+summary(model_head)
 ```
 
-$$stepwise: bwt\sim babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken\\ main :bwt \sim gaweeks \\head:bwt \sim bhead + blength + babysex + bhead * blength * babysex$$
+
 
 ```{r}
 set.seed(100)
@@ -125,29 +129,29 @@ We can see from the glance of the data set that the data contains our main inter
 ## distribution of log beta
 
 ```{r}
-results %>% ggplot(aes(x = log)) + geom_density() +labs(title = "distribution of log(beta0*beta1)",x = "log(beta0*beta1)")
+results %>% ggplot(aes(x = log)) + geom_density(fill = "pink") +labs(title = "distribution of log(beta0*beta1)",x = "log(beta0*beta1)")
 
 ```
 
 ```{r}
-quantile(pull(results,log),c(0.25,0.75))
+quantile(pull(results,log),c(0.025,0.975))
 ```
 
-The 95% confidence interval for $log(\hat\beta_0 * \hat\beta_1)$ is between (1.997, 2.029). From the plot we can see that the distribution is kind of normal with a little longer tail on the left side.
+The 95% confidence interval for $log(\hat\beta_0 * \hat\beta_1)$ is between (1.964, 2.057). From the plot we can see that the distribution is kind of normal with a little longer tail on the left side.
 
 
 ## distribution of r-squared
 
 ```{r}
-results %>% ggplot(aes(x = r.squared)) + geom_density() +labs(title = "distribution of r squared",x = "r squared")
+results %>% ggplot(aes(x = r.squared)) + geom_density(fill = "grey") +labs(title = "distribution of r squared",x = "r squared")
 
 ```
 
 ```{r}
-quantile(pull(results,r.squared),c(0.25,0.75))
+quantile(pull(results,r.squared),c(0.025,0.975))
 ```
 
-The 95% confidence interval for $R^2$ is between (0.906, 0.917). From the plot we can see that the distribution is kind of normal and a little bit right skewed.
+The 95% confidence interval for $R^2$ is between (0.894, 0.927). From the plot we can see that the distribution is kind of normal and a little bit right skewed.
 
 
 

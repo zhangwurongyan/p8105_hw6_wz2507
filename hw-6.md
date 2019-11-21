@@ -13,13 +13,31 @@ birthweight <- read_csv("data/birthweight.csv") %>% mutate(babysex = as.factor(b
          malform = as.factor(malform),
          mrace = as.factor(mrace)) %>% janitor::clean_names()
 
-summary(is.na(birthweight)) %>% knitr::kable()
+colSums(is.na(birthweight)) %>% knitr::kable()
 ```
 
-|  |    babysex    |     bhead     |    blength    |      bwt      |     delwt     |    fincome    |     frace     |    gaweeks    |    malform    |   menarche    |    mheight    |    momage     |     mrace     |    parity     |    pnumlbw    |    pnumsga    |     ppbmi     |     ppwt      |    smoken     |    wtgain     |
-|  | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: | :-----------: |
-|  | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical | Mode :logical |
-|  |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |  FALSE:4342   |
+|          | x |
+| -------- | -: |
+| babysex  | 0 |
+| bhead    | 0 |
+| blength  | 0 |
+| bwt      | 0 |
+| delwt    | 0 |
+| fincome  | 0 |
+| frace    | 0 |
+| gaweeks  | 0 |
+| malform  | 0 |
+| menarche | 0 |
+| mheight  | 0 |
+| momage   | 0 |
+| mrace    | 0 |
+| parity   | 0 |
+| pnumlbw  | 0 |
+| pnumsga  | 0 |
+| ppbmi    | 0 |
+| ppwt     | 0 |
+| smoken   | 0 |
+| wtgain   | 0 |
 
 From the summary above, we can see that there are no missing data. I
 converted babysex, frace, malform and mrace to factor. The data set
@@ -204,7 +222,7 @@ step(model1, direction = "both")
     ##      mrace4       parity         ppwt       smoken  
     ##    -100.678       96.305       -2.676       -4.843
 
-The model chosen from stepwise regression
+The model chosen from stepwise regression (for both directions)
 is:
 
 ``` r
@@ -250,21 +268,79 @@ The plot of model resuduals against fitted values are shown below:
 birthweight %>% 
   add_predictions(swmodel) %>% 
   add_residuals(swmodel) %>% ggplot(aes(x=pred, y=resid))+
-  geom_point(color="pink") + geom_line(aes(y=0))+labs(title = "residuals against fitted values", x="prediction", y="residuals")
+  geom_point(color="pink") + geom_smooth(method = "lm")+labs(title = "residuals against fitted values", x="prediction", y="residuals")
 ```
 
 ![](hw-6_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+The model has \(R^2\) of 0.718 which means 71.8% of the variablity of
+birthweight was explained by the model. The relationship between
+residuals and fitted values are not clear as we can see from the plot
+above.
 
 ## comparing models
 
 In order to compare those three models, I would like to use cross
 validation.
 
+The three models are
+\[stepwise: bwt\sim babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken\\ main :bwt \sim gaweeks \\head:bwt \sim bhead + blength + babysex + bhead * blength * babysex\]
+The summary of the other two models are shown below:
+
 ``` r
 model_main = lm(bwt ~ gaweeks ,data = birthweight)
-
-model_head = lm(bwt ~ bhead + blength + babysex + bhead * blength * babysex ,data = birthweight)
+summary(model_main)
 ```
+
+    ## 
+    ## Call:
+    ## lm(formula = bwt ~ gaweeks, data = birthweight)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -1730.52  -292.85    -0.78   303.47  1591.36 
+    ## 
+    ## Coefficients:
+    ##             Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)  476.003     88.809    5.36 8.76e-08 ***
+    ## gaweeks       66.920      2.245   29.80  < 2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 466.7 on 4340 degrees of freedom
+    ## Multiple R-squared:  0.1699, Adjusted R-squared:  0.1697 
+    ## F-statistic: 888.3 on 1 and 4340 DF,  p-value: < 2.2e-16
+
+``` r
+model_head = lm(bwt ~ bhead + blength + babysex + bhead * blength * babysex ,data = birthweight)
+summary(model_head)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = bwt ~ bhead + blength + babysex + bhead * blength * 
+    ##     babysex, data = birthweight)
+    ## 
+    ## Residuals:
+    ##      Min       1Q   Median       3Q      Max 
+    ## -1132.99  -190.42   -10.33   178.63  2617.96 
+    ## 
+    ## Coefficients:
+    ##                          Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)            -7176.8170  1264.8397  -5.674 1.49e-08 ***
+    ## bhead                    181.7956    38.0542   4.777 1.84e-06 ***
+    ## blength                  102.1269    26.2118   3.896 9.92e-05 ***
+    ## babysex2                6374.8684  1677.7669   3.800 0.000147 ***
+    ## bhead:blength             -0.5536     0.7802  -0.710 0.478012    
+    ## bhead:babysex2          -198.3932    51.0917  -3.883 0.000105 ***
+    ## blength:babysex2        -123.7729    35.1185  -3.524 0.000429 ***
+    ## bhead:blength:babysex2     3.8781     1.0566   3.670 0.000245 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 287.7 on 4334 degrees of freedom
+    ## Multiple R-squared:  0.6849, Adjusted R-squared:  0.6844 
+    ## F-statistic:  1346 on 7 and 4334 DF,  p-value: < 2.2e-16
 
 ``` r
 set.seed(100)
@@ -296,3 +372,89 @@ has the lowest rmse among those three models so the this model has
 better fit compare to the other two. For the comparison between main
 effect model and the interaction model, the interaction model has lower
 rmse than the other one.
+
+## Problem 2
+
+``` r
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+# bootstrap
+
+``` r
+set.seed(100)
+
+results = weather_df %>% 
+  bootstrap(5000) %>% mutate(model = map(strap, ~lm(tmax~tmin, data = .x)),coefficient = map(model, broom::tidy),  summary = map(model, broom::glance)) %>% 
+  select(-strap,-model) %>% unnest(summary, coefficient) %>% mutate(term=recode(term, "(Intercept)" = "beta0", "tmin"="beta1")) %>%
+  select(r.squared, adj.r.squared, term, estimate)  %>%  pivot_wider(names_from = term, values_from = estimate) %>% mutate(log = log(beta0*beta1))
+```
+
+    ## Warning: unnest() has a new interface. See ?unnest for details.
+    ## Try `df %>% unnest(c(summary, coefficient))`, with `mutate()` if needed
+
+``` r
+results[1:5,] %>% 
+  select(r.squared, adj.r.squared,log) %>% knitr::kable()
+```
+
+| r.squared | adj.r.squared |      log |
+| --------: | ------------: | -------: |
+| 0.9033037 |     0.9030373 | 2.025275 |
+| 0.8870431 |     0.8867319 | 2.044843 |
+| 0.9187228 |     0.9184989 | 1.999614 |
+| 0.9158852 |     0.9156535 | 1.999788 |
+| 0.9245112 |     0.9243032 | 2.020667 |
+
+We can see from the glance of the data set that the data contains our
+main interest of \(\hatR^2\) and
+\(log(\hat\beta_0 * \hat\beta_1)\).
+
+## distribution of log beta
+
+``` r
+results %>% ggplot(aes(x = log)) + geom_density(fill = "pink") +labs(title = "distribution of log(beta0*beta1)",x = "log(beta0*beta1)")
+```
+
+![](hw-6_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+``` r
+quantile(pull(results,log),c(0.025,0.975))
+```
+
+    ##     2.5%    97.5% 
+    ## 1.964370 2.057061
+
+The 95% confidence interval for \(log(\hat\beta_0 * \hat\beta_1)\) is
+between (1.964, 2.057). From the plot we can see that the distribution
+is kind of normal with a little longer tail on the left
+side.
+
+## distribution of r-squared
+
+``` r
+results %>% ggplot(aes(x = r.squared)) + geom_density(fill = "grey") +labs(title = "distribution of r squared",x = "r squared")
+```
+
+![](hw-6_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+``` r
+quantile(pull(results,r.squared),c(0.025,0.975))
+```
+
+    ##      2.5%     97.5% 
+    ## 0.8938654 0.9271376
+
+The 95% confidence interval for \(R^2\) is between (0.894, 0.927). From
+the plot we can see that the distribution is kind of normal and a little
+bit right skewed.
