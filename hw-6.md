@@ -262,21 +262,22 @@ summary(swmodel)
     ## Multiple R-squared:  0.7181, Adjusted R-squared:  0.7173 
     ## F-statistic: 848.1 on 13 and 4328 DF,  p-value: < 2.2e-16
 
-The plot of model resuduals against fitted values are shown below:
+The plot of model residuals against fitted values are shown below:
 
 ``` r
 birthweight %>% 
   add_predictions(swmodel) %>% 
   add_residuals(swmodel) %>% ggplot(aes(x=pred, y=resid))+
-  geom_point(color="pink") + geom_smooth(method = "lm")+labs(title = "residuals against fitted values", x="prediction", y="residuals")
+  geom_point(color="pink") + geom_smooth(method = "lm")+labs(title = "residuals against fitted values", x="fitted values", y="residuals")
 ```
 
 ![](hw-6_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
-The model has \(R^2\) of 0.718 which means 71.8% of the variablity of
+The model has \(R^2\) of 0.718 which means 71.8% of the variability of
 birthweight was explained by the model. The relationship between
-residuals and fitted values are not clear as we can see from the plot
-above.
+residuals and fitted values are roughly constant on the right side with
+higher values but there are some random residuals on the left side with
+lower values as we can see from the plot above.
 
 ## comparing models
 
@@ -285,6 +286,7 @@ validation.
 
 The three models are
 \[stepwise: bwt\sim babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken\\ main :bwt \sim gaweeks \\head:bwt \sim bhead + blength + babysex + bhead * blength * babysex\]
+
 The summary of the other two models are shown below:
 
 ``` r
@@ -373,7 +375,7 @@ better fit compare to the other two. For the comparison between main
 effect model and the interaction model, the interaction model has lower
 rmse than the other one.
 
-## Problem 2
+# Problem 2
 
 ``` r
 weather_df = 
@@ -389,7 +391,7 @@ weather_df =
   select(name, id, everything())
 ```
 
-# bootstrap
+### bootstrap
 
 ``` r
 set.seed(100)
@@ -398,12 +400,7 @@ results = weather_df %>%
   bootstrap(5000) %>% mutate(model = map(strap, ~lm(tmax~tmin, data = .x)),coefficient = map(model, broom::tidy),  summary = map(model, broom::glance)) %>% 
   select(-strap,-model) %>% unnest(summary, coefficient) %>% mutate(term=recode(term, "(Intercept)" = "beta0", "tmin"="beta1")) %>%
   select(r.squared, adj.r.squared, term, estimate)  %>%  pivot_wider(names_from = term, values_from = estimate) %>% mutate(log = log(beta0*beta1))
-```
 
-    ## Warning: unnest() has a new interface. See ?unnest for details.
-    ## Try `df %>% unnest(c(summary, coefficient))`, with `mutate()` if needed
-
-``` r
 results[1:5,] %>% 
   select(r.squared, adj.r.squared,log) %>% knitr::kable()
 ```
